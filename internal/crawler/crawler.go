@@ -34,8 +34,6 @@ type Bank interface {
 	CountMatches(tokens chan string)
 }
 
-var tokenized = 0
-
 func New(cfg *config.Config, bank Bank, logger zerolog.Logger) (*Crawler, error) {
 	linksFile, err := os.Open(cfg.CrawlerLinkListPath)
 	if err != nil {
