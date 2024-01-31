@@ -23,7 +23,7 @@ Run the app using
 | Crawler URLs Path    | `files/endg-urls` | CRAWLER_LINK_LIST_PATH  |
 | Crawler Proxies Path |  `files/proxies`  | CRAWLER_PROXY_LIST_PATH |
 
-### Crawler Parametersa
+### Crawler Parameters
 
 | Parameter                   | Default Value |        Enviromental Variable        |
 | :-------------------------- | :-----------: | :---------------------------------: |
