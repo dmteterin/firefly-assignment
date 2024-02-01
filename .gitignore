@@ -20,5 +20,4 @@ logs.txt
 secret.md
 .vscode
 cache/
-files/proxies
 # app.env Leaving this unignored for assignment evaluation purposes only
