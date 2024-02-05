@@ -2,17 +2,17 @@ package crawler
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dmteterin/firefly-assignment/internal/config"
-	"github.com/gocolly/colly"
-	"github.com/gocolly/colly/extensions"
-	"github.com/gocolly/colly/proxy"
-	"github.com/gocolly/colly/queue"
+	"github.com/gocolly/colly/v2"
+	"github.com/gocolly/colly/v2/extensions"
+	"github.com/gocolly/colly/v2/proxy"
+	"github.com/gocolly/colly/v2/queue"
 	"github.com/rs/zerolog"
 )
 
@@ -27,6 +27,7 @@ type Crawler struct {
 	errorUrlRetries  map[string]int
 	maxRetries       int
 	backoffEnabled   bool
+	retryLock        sync.Mutex
 	collector        *colly.Collector
 }
 
@@ -72,6 +73,7 @@ func New(cfg *config.Config, bank Bank, logger zerolog.Logger) (*Crawler, error)
 		backoffEnabled:   cfg.CrawlerEnableExpBackoff,
 		errorUrlRetries:  make(map[string]int),
 		maxRetries:       cfg.CrawlerURLRetryLimit,
+		retryLock:        sync.Mutex{},
 		collector: colly.NewCollector(
 			colly.CacheDir("./cache"),
 		),
@@ -91,7 +93,7 @@ func (c *Crawler) Tokenize() {
 			c.tokenCh <- token
 		}
 		articleCount++
-		if articleCount%1000 == 0 {
+		if articleCount%10 == 0 {
 			c.logger.Info().Msgf("Scanned %v articles", articleCount)
 		}
 	}
@@ -135,14 +137,14 @@ func (c *Crawler) configureCollector() {
 
 		link := r.Request.URL.String()
 
-		if _, ok := c.errorUrlRetries[link]; !ok {
-			c.errorUrlRetries[link]++
-			r.Request.Retry()
-		} else if c.errorUrlRetries[link] <= c.maxRetries {
-			c.errorUrlRetries[link]++
-			r.Request.Retry()
-		} else {
-			fmt.Println(c.errorUrlRetries[link], link)
+		c.retryLock.Lock()
+		retryCount := c.errorUrlRetries[link]
+
+		c.errorUrlRetries[link]++
+		c.retryLock.Unlock()
+		if retryCount > c.maxRetries+1 {
+			c.logger.Info().Msgf("Fetch for %v unsuccessful after %v attemps", link, c.maxRetries+1)
+			return
 		}
 		r.Request.Retry()
 	})
